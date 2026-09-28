@@ -1,0 +1,13 @@
+CREATE TABLE orders (
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    total NUMERIC(10, 2) NOT NULL DEFAULT 0,
+    status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    address TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_orders_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE RESTRICT
+);
