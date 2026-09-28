@@ -1,0 +1,16 @@
+
+.env
+.env.*
+
+/bin/
+/build/
+/dist/
+
+coverage.out
+coverage.html
+
+.vscode/
+.idea/
+
+.DS_Store
+Thumbs.db
