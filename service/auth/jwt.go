@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt"
@@ -16,8 +15,8 @@ func CreateJWT(secret []byte, id int, rememberMe bool) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":         strconv.Itoa(id),
-		"expiration": expirationDate,
+		"sub": id,
+		"exp": expirationDate,
 	})
 
 	tokenString, err := token.SignedString(secret)

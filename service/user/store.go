@@ -17,21 +17,36 @@ func NewStore(db *sql.DB) *Store {
 func (s *Store) CreateUser(user types.User) error {
 	_, err := s.db.Exec(
 		`INSERT INTO users
-        (first_name, last_name, username, email, password)
+        (first_name, last_name, username, email, password, verified)
      VALUES
-        ($1, $2, $3, $4, $5)`,
+        ($1, $2, $3, $4, $5, $6)`,
 		user.FirstName,
 		user.LastName,
 		user.Username,
 		user.Email,
 		user.Password,
+		user.Verified,
 	)
 
-	if err != nil {
-		return err
-	}
+	return err
+}
 
-	return nil
+func (s *Store) UpdateUser(user types.User) error {
+	_, err := s.db.Exec(
+		`UPDATE users
+		 SET first_name = $1,
+			 last_name = $2,
+			 username = $3,
+			 email = $4
+		 WHERE id = $5`,
+		user.FirstName,
+		user.LastName,
+		user.Username,
+		user.Email,
+		user.Id,
+	)
+
+	return err
 }
 
 func (s *Store) GetUserById(id int) (*types.User, error) {

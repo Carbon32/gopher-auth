@@ -147,6 +147,10 @@ func (t *testUserStore) CreateUser(types.User) error {
 	return nil
 }
 
+func (t *testUserStore) UpdateUser(types.User) error {
+	return nil
+}
+
 func (t *testUserStore) GetUserById(id int) (*types.User, error) {
 	return nil, nil
 }
