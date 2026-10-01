@@ -29,13 +29,13 @@ type RegisterUser struct {
 
 type LoginUserEmail struct {
 	Email      string `json:"email" validate:"required,email"`
-	Password   string `json:"password" validate:"required"`
+	Password   string `json:"password" validate:"required,min=8,max=128"`
 	RememberMe *bool  `json:"remember_me" validate:"required"`
 }
 
 type LoginUserUsername struct {
 	Username   string `json:"username" validate:"required,min=3,max=32"`
-	Password   string `json:"password" validate:"required"`
+	Password   string `json:"password" validate:"required,min=8,max=128"`
 	RememberMe *bool  `json:"remember_me" validate:"required"`
 }
 
@@ -66,8 +66,13 @@ type UpdatePassword struct {
 }
 
 // Whatever, I'm noting things here
+// register (x) t (x)
+// login username (x) t (x)
+// login e-mail (x) t (x)
+
 // profile (x) t ()
 // update_profile (x) t ()
 // update_email (x) t ()
 // update_password (x) t ()
-// mailpit t ()
+
+// mailpit (x) t ()

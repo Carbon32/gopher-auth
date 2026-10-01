@@ -8,12 +8,19 @@ import (
 )
 
 type Config struct {
-	Host      string
-	Port      int
-	User      string
-	Password  string
-	Database  string
+	Host     string
+	Port     int
+	User     string
+	Password string
+	Database string
+
 	JWTSecret string
+
+	SMTPHost     string
+	SMTPPort     int
+	STMPUsername string
+	STMPPassword string
+	SMTPFrom     string
 }
 
 var Environement = InitConfig()
@@ -22,12 +29,19 @@ func InitConfig() Config {
 	// The default values are simply the values used for testing
 	godotenv.Load()
 	return Config{
-		Host:      getEnv("PUBLIC_HOST", "localhost"),
-		Port:      getNumericEnv("PORT", 5432),
-		User:      getEnv("USER", "postgres"),
-		Password:  getEnv("PASSWORD", "carbon123"),
-		Database:  getEnv("DATABASE", "go_backend"),
+		Host:     getEnv("PUBLIC_HOST", "localhost"),
+		Port:     getNumericEnv("PORT", 5432),
+		User:     getEnv("USER", "postgres"),
+		Password: getEnv("PASSWORD", "carbon123"),
+		Database: getEnv("DATABASE", "go_backend"),
+
 		JWTSecret: getEnv("JWT_SECRET", "whateverman"),
+
+		SMTPHost:     getEnv("SMTP_HOST", "localhost"),
+		SMTPPort:     getNumericEnv("SMTP_PORT", 1025),
+		STMPUsername: getEnv("SMTP_USERNAME", ""),
+		STMPPassword: getEnv("SMTP_PASSWORD", ""),
+		SMTPFrom:     getEnv("SMTP_FROM", "noreply@localhost"),
 	}
 }
 

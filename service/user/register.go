@@ -2,9 +2,11 @@ package user
 
 import (
 	"carb-backend/service/auth"
+	"carb-backend/service/mail"
 	"carb-backend/service/types"
 	"carb-backend/service/utils"
 	"fmt"
+	"log"
 	"net/http"
 	"regexp"
 
@@ -56,5 +58,11 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.WriteJSON(w, http.StatusCreated, nil)
+
+	err = mail.SendEmail(payload.Email, "Welcome", mail.VerificationTemplate(payload.Username, "www.whatever.com"), true)
+
+	if err != nil {
+		log.Println("EMAIL ERROR: ", err)
+	}
 
 }

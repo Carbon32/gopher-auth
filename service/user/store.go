@@ -122,6 +122,7 @@ func convertRowIntoUser(rows *sql.Rows) (*types.User, error) {
 		&user.Email,
 		&user.Password,
 		&user.CreatedAt,
+		&user.Verified,
 	)
 
 	if err != nil {
