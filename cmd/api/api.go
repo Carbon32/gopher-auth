@@ -1,5 +1,7 @@
 package api
 
+// I'm gonna keep this an authentication system only, I'm gonna build the rest of the system using C# or Python, not sure
+
 import (
 	"carb-backend/service/user"
 	"database/sql"
@@ -7,15 +9,19 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/rs/cors"
 )
 
 type APIServer struct {
-	address string
+	address *string
 	db      *sql.DB
 }
 
 func NewAPIServer(address string, db *sql.DB) *APIServer {
-	return &APIServer{address: address, db: db}
+	return &APIServer{
+		address: &address,
+		db:      db,
+	}
 }
 
 func (s *APIServer) Run() error {
@@ -26,7 +32,25 @@ func (s *APIServer) Run() error {
 	userHandler := user.NewHandler(userStore)
 	userHandler.RegisterRoutes(subrouter)
 
-	log.Println("Listening on", s.address)
+	handler := cors.New(cors.Options{
+		AllowedOrigins: []string{
+			"http://localhost:5173", // For testing
+		},
+		AllowedMethods: []string{
+			"GET",
+			"POST",
+			"PUT",
+			"DELETE",
+			"OPTIONS",
+		},
+		AllowedHeaders: []string{
+			"Content-Type",
+			"Authorization",
+		},
+		AllowCredentials: true,
+	}).Handler(router)
 
-	return http.ListenAndServe(s.address, router)
+	log.Println("Listening on", *s.address)
+
+	return http.ListenAndServe(*s.address, handler)
 }

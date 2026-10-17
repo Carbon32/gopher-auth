@@ -12,12 +12,12 @@ type UserStore interface {
 
 type User struct {
 	Id        int       `json:"id"`
-	FirstName string    `json:"firstName"`
-	LastName  string    `json:"lastName"`
+	FirstName string    `json:"fiast_name"`
+	LastName  string    `json:"last_name"`
 	Username  string    `json:"username"`
 	Email     string    `json:"email"`
 	Password  string    `json:"password"`
-	CreatedAt time.Time `json:"createdAt"`
+	CreatedAt time.Time `json:"created_at"`
 	Verified  bool      `json:"verified"`
 }
 
@@ -41,17 +41,17 @@ type LoginUserUsername struct {
 
 type Profile struct {
 	Id        int       `json:"id"`
-	FirstName string    `json:"firstName"`
-	LastName  string    `json:"lastName"`
+	FirstName string    `json:"first_name"`
+	LastName  string    `json:"last_name"`
 	Username  string    `json:"username"`
 	Email     string    `json:"email"`
-	CreatedAt time.Time `json:"createdAt"`
+	CreatedAt time.Time `json:"created_at"`
 	Verified  bool      `json:"verified"`
 }
 
 type UpdateProfile struct {
-	FirstName string `json:"firstName" validate:"required,min=3,max=32"`
-	LastName  string `json:"lastName" validate:"required,min=3,max=32"`
+	FirstName string `json:"first_name" validate:"required,min=3,max=32"`
+	LastName  string `json:"last_name" validate:"required,min=3,max=32"`
 	Username  string `json:"username" validate:"required,min=3,max=32"`
 }
 

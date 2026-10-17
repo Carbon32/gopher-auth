@@ -21,9 +21,12 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 		)
 	})
 
+	protected.HandleFunc("/me", h.handleMe).Methods("GET")
+	protected.HandleFunc("/confirm", h.handleConfirm).Methods("GET")
+
 	protected.HandleFunc("/profile", h.getProfile).Methods("GET")
-	protected.HandleFunc("/update_profile", h.updateProfile).Methods("POST")
-	protected.HandleFunc("/update_email", h.updateEmail).Methods("POST")
-	protected.HandleFunc("/update_passowrd", h.updatePassword).Methods("POST")
+	protected.HandleFunc("/update_profile", h.updateProfile).Methods("PUT")
+	protected.HandleFunc("/update_email", h.updateEmail).Methods("PUT")
+	protected.HandleFunc("/update_passowrd", h.updatePassword).Methods("PUT")
 
 }

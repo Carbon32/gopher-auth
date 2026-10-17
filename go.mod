@@ -10,6 +10,7 @@ require (
 	github.com/gorilla/mux v1.8.1 // direct
 	github.com/jackc/pgx/v5 v5.11.0 // direct
 	github.com/joho/godotenv v1.5.1
+	github.com/rs/cors v1.11.1
 	github.com/wneessen/go-mail v0.8.1
 	golang.org/x/crypto v0.57.0
 )

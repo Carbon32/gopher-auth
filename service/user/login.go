@@ -42,7 +42,7 @@ func (h *Handler) handleLoginEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.WriteJSON(w, http.StatusOK, map[string]string{"token": token})
+	utils.WriteJSON(w, http.StatusOK, map[string]string{"access_token": token})
 }
 
 func (h *Handler) handleLoginUsername(w http.ResponseWriter, r *http.Request) {
@@ -80,5 +80,5 @@ func (h *Handler) handleLoginUsername(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.WriteJSON(w, http.StatusOK, map[string]string{"token": token})
+	utils.WriteJSON(w, http.StatusOK, map[string]string{"access_token": token})
 }

@@ -16,11 +16,15 @@ func (h *Handler) getProfile(w http.ResponseWriter, r *http.Request) {
 	userId, ok := r.Context().Value(auth.UserIdKey).(int)
 
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		utils.WriteError(w, http.StatusUnauthorized, fmt.Errorf("Unauthorized"))
 		return
 	}
 
 	user, err := h.store.GetUserById(userId)
+	if err != nil {
+		utils.WriteError(w, http.StatusNotFound, fmt.Errorf("User not found"))
+		return
+	}
 
 	response := types.Profile{
 		Id:        user.Id,
@@ -32,11 +36,6 @@ func (h *Handler) getProfile(w http.ResponseWriter, r *http.Request) {
 		Verified:  user.Verified,
 	}
 
-	if err != nil {
-		http.Error(w, "User not found", http.StatusNotFound)
-		return
-	}
-
 	utils.WriteJSON(w, http.StatusOK, response)
 }
 
@@ -44,7 +43,7 @@ func (h *Handler) updateProfile(w http.ResponseWriter, r *http.Request) {
 	userId, ok := r.Context().Value(auth.UserIdKey).(int)
 
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		utils.WriteError(w, http.StatusUnauthorized, fmt.Errorf("Unauthorized"))
 		return
 	}
 
@@ -77,7 +76,7 @@ func (h *Handler) updateProfile(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.store.GetUserById(userId)
 	if err != nil {
-		http.Error(w, "User not found", http.StatusNotFound)
+		utils.WriteError(w, http.StatusUnauthorized, fmt.Errorf("Unauthorized"))
 		return
 	}
 
@@ -98,7 +97,7 @@ func (h *Handler) updateEmail(w http.ResponseWriter, r *http.Request) {
 	userId, ok := r.Context().Value(auth.UserIdKey).(int)
 
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		utils.WriteError(w, http.StatusUnauthorized, fmt.Errorf("Unauthorized"))
 		return
 	}
 
@@ -116,7 +115,7 @@ func (h *Handler) updateEmail(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.store.GetUserById(userId)
 	if err != nil {
-		http.Error(w, "User not found", http.StatusNotFound)
+		utils.WriteError(w, http.StatusUnauthorized, fmt.Errorf("Unauthorized"))
 		return
 	}
 
@@ -126,7 +125,7 @@ func (h *Handler) updateEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if user.Email == payload.Email {
-		http.Error(w, "The user already uses this e-mail", http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("The user already uses this e-mail"))
 		return
 	}
 
@@ -145,7 +144,7 @@ func (h *Handler) updatePassword(w http.ResponseWriter, r *http.Request) {
 	userId, ok := r.Context().Value(auth.UserIdKey).(int)
 
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		utils.WriteError(w, http.StatusUnauthorized, fmt.Errorf("Unauthorized"))
 		return
 	}
 
@@ -163,7 +162,7 @@ func (h *Handler) updatePassword(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.store.GetUserById(userId)
 	if err != nil {
-		http.Error(w, "User not found", http.StatusNotFound)
+		utils.WriteError(w, http.StatusUnauthorized, fmt.Errorf("Unauthorized"))
 		return
 	}
 
