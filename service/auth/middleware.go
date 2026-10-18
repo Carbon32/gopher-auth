@@ -1,68 +1,58 @@
 package auth
 
 import (
+	"carb-backend/service/types"
 	"context"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-const UserIdKey string = "id"
+const UserIdKey = "id"
+const SessionIDKey = "session_id"
 
-func RequireAuth(secret []byte, next http.Handler) http.Handler {
+func RequireAuth(secret []byte, check types.SessionChecker, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		parts := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
+		if len(parts) != 2 || parts[0] != "Bearer" || strings.TrimSpace(parts[1]) == "" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		claims := new(types.AccessClaims)
+		token, err := jwt.ParseWithClaims(parts[1], claims, func(token *jwt.Token) (any, error) {
+			if token.Method != jwt.SigningMethodHS256 {
+				return nil, jwt.ErrSignatureInvalid
+			}
+			return secret, nil
+		},
+			jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 
-		authHeader := r.Header.Get("Authorization")
-
-		if authHeader == "" {
-			http.Error(w, "Missing Authorization header", http.StatusUnauthorized)
+		if err != nil || token == nil || !token.Valid {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		parts := strings.SplitN(authHeader, " ", 2)
-
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			http.Error(w, "Invalid Authorization header", http.StatusUnauthorized)
+		userID, err := strconv.Atoi(claims.Subject)
+		if err != nil || userID <= 0 || claims.SessionID == "" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		tokenString := parts[1]
-
-		token, err := jwt.Parse(
-			tokenString,
-			func(token *jwt.Token) (any, error) {
-				if token.Method != jwt.SigningMethodHS256 {
-					return nil, jwt.ErrSignatureInvalid
-				}
-
-				return secret, nil
-			},
-		)
-
-		if err != nil || !token.Valid {
-			http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
+		active, err := check(r.Context(), claims.SessionID)
+		if err != nil {
+			http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
 			return
 		}
 
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok {
-			http.Error(w, "Invalid token claims", http.StatusUnauthorized)
+		if !active {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		userId, ok := claims["sub"].(float64)
-		if !ok {
-			http.Error(w, "Invalid user ID", http.StatusUnauthorized)
-			return
-		}
-
-		ctx := context.WithValue(
-			r.Context(),
-			UserIdKey,
-			int(userId),
-		)
-
+		ctx := context.WithValue(r.Context(), UserIdKey, userID)
+		ctx = context.WithValue(ctx, SessionIDKey, claims.SessionID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

@@ -3,6 +3,7 @@ package mail
 import (
 	"carb-backend/cmd/db"
 	"fmt"
+	"html"
 
 	"github.com/wneessen/go-mail"
 )
@@ -107,10 +108,10 @@ func VerificationTemplate(username, url string) string {
 
 		</body>
 	</html>
-	`, username, url)
+	`, html.EscapeString(username), html.EscapeString(url))
 }
 
-func SendEmail(to, subject, body string, debug bool) error {
+func SendEmail(to, subject, body string) error {
 	host := db.Environement.SMTPHost
 	port := db.Environement.SMTPPort
 	from := db.Environement.SMTPFrom
@@ -122,22 +123,21 @@ func SendEmail(to, subject, body string, debug bool) error {
 
 	m.SetBodyString(mail.TypeTextHTML, body)
 
-	var client *mail.Client
-	var err error
-
-	if debug {
-		client, err = mail.NewClient(
-			host,
-			mail.WithPort(port),
-			mail.WithTLSPolicy(mail.NoTLS),
-		)
-	} else {
-		client, err = mail.NewClient(
-			host,
-			mail.WithPort(port),
-			mail.WithTLSPolicy(mail.TLSMandatory),
-		)
+	if (db.Environement.SMTPUsername != "" || db.Environement.SMTPPassword != "") && !db.Environement.SMTPUseTLS {
+		return fmt.Errorf("SMTP credentials require TLS")
 	}
+
+	tlsPolicy := mail.TLSMandatory
+	if !db.Environement.SMTPUseTLS {
+		tlsPolicy = mail.NoTLS
+	}
+
+	opts := []mail.Option{mail.WithPort(port), mail.WithTLSPolicy(tlsPolicy)}
+	if db.Environement.SMTPUsername != "" {
+		opts = append(opts, mail.WithUsername(db.Environement.SMTPUsername), mail.WithPassword(db.Environement.SMTPPassword), mail.WithSMTPAuth(mail.SMTPAuthAutoDiscover))
+	}
+
+	client, err := mail.NewClient(host, opts...)
 
 	if err != nil {
 		return err

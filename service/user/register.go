@@ -2,67 +2,72 @@ package user
 
 import (
 	"carb-backend/service/auth"
-	"carb-backend/service/mail"
 	"carb-backend/service/types"
 	"carb-backend/service/utils"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"regexp"
-
-	"github.com/go-playground/validator/v10"
+	"strings"
 )
 
+var usernamePattern = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
+
 func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
-	var payload types.RegisterUser
-	if err := utils.ParseJSON(r, &payload); err != nil {
+	var p types.RegisterUser
+	if err := utils.ParseJSON(r, &p); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
-
-	if !regexp.MustCompile(`^[a-zA-Z0-9_]+$`).MatchString(payload.Username) {
+	p.Username = strings.ToLower(strings.TrimSpace(p.Username))
+	p.Email = strings.ToLower(strings.TrimSpace(p.Email))
+	if !usernamePattern.MatchString(p.Username) {
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("Username may only contain letters, numbers, and underscores"))
 		return
 	}
-
-	if err := utils.Validate.Struct(payload); err != nil {
-		errors := err.(validator.ValidationErrors)
-		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("Invalid request %v", errors))
+	if err := utils.Validate.Struct(p); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("Invalid request"))
 		return
 	}
-
-	_, err := h.store.GetUserByEmail(payload.Email)
-	if err == nil {
-		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("A user with the e-mail %s already exists", payload.Email))
+	if len([]byte(p.Password)) > 72 {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("Password must be at most 72 bytes"))
 		return
 	}
-
-	hashedPassword, err := auth.HashPassword(payload.Password)
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, err)
+	if _, err := h.store.GetUserByEmail(p.Email); err == nil {
+		utils.WriteError(w, http.StatusConflict, fmt.Errorf("E-mail or username is unavailable"))
+		return
+	} else if !errors.Is(err, ErrNotFound) {
+		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("Could not check account availability"))
 		return
 	}
-
-	err = h.store.CreateUser(types.User{
-		FirstName: "",
-		LastName:  "",
-		Username:  payload.Username,
-		Email:     payload.Email,
-		Password:  hashedPassword,
-		Verified:  false,
-	})
-
+	if _, err := h.store.GetUserByUsername(p.Username); err == nil {
+		utils.WriteError(w, http.StatusConflict, fmt.Errorf("E-mail or username is unavailable"))
+		return
+	} else if !errors.Is(err, ErrNotFound) {
+		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("Could not check account availability"))
+		return
+	}
+	hash, err := auth.HashPassword(p.Password)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
-
-	utils.WriteJSON(w, http.StatusCreated, nil)
-
-	err = mail.SendEmail(payload.Email, "Welcome", mail.VerificationTemplate(payload.Username, "www.whatever.com"), true)
-
-	if err != nil {
-		log.Println("EMAIL ERROR: ", err)
+	if err := h.store.CreateUser(types.User{Username: p.Username, Email: p.Email, Password: hash, Verified: false}); err != nil {
+		if isUniqueViolation(err) {
+			utils.WriteError(w, http.StatusConflict, fmt.Errorf("E-mail or username is unavailable"))
+		} else {
+			utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("Could not create account"))
+		}
+		return
 	}
-
+	u, err := h.store.GetUserByEmail(p.Email)
+	if err == nil {
+		if e := h.issueAction(r.Context(), u.Id, p.Email, "verify_email", "/verify_email", "Verify your e-mail"); e != nil {
+			log.Printf("verification e-mail error: %v", e)
+		}
+	} else {
+		log.Printf("could not load newly created user for verification: %v", err)
+	}
+	utils.WriteJSON(w, http.StatusCreated, map[string]string{"message": "Account created. Check your e-mail to verify it."})
 }

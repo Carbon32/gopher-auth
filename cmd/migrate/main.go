@@ -17,6 +17,7 @@ func main() {
 		User:     db.Environement.User,
 		Password: db.Environement.Password,
 		Database: db.Environement.Database,
+		SSLMode:  db.Environement.SSLMode,
 	}
 
 	database, err := db.NewPostgresStorage(cfg)

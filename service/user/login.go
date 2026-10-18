@@ -5,80 +5,88 @@ import (
 	"carb-backend/service/auth"
 	"carb-backend/service/types"
 	"carb-backend/service/utils"
+	"context"
+	"errors"
 	"fmt"
 	"net/http"
-	"regexp"
-
-	"github.com/go-playground/validator/v10"
+	"strings"
+	"time"
 )
 
-func (h *Handler) handleLoginEmail(w http.ResponseWriter, r *http.Request) {
-	var payload types.LoginUserEmail
-	if err := utils.ParseJSON(r, &payload); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
+var dummyPasswordHash, _ = auth.HashPassword("not-an-account-password")
+
+func (h *Handler) login(w http.ResponseWriter, r *http.Request, lookup func(string) (*types.User, error), identifier, password string, remember bool) {
+	u, err := lookup(identifier)
+	if errors.Is(err, ErrNotFound) {
+		_ = auth.ComparePassword(dummyPasswordHash, []byte(password))
+		utils.WriteError(w, http.StatusUnauthorized, fmt.Errorf("Invalid credentials"))
 		return
 	}
-
-	if err := utils.Validate.Struct(payload); err != nil {
-		errors := err.(validator.ValidationErrors)
-		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("Invalid request %v", errors))
-		return
-	}
-
-	u, err := h.store.GetUserByEmail(payload.Email)
 	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("Invalid e-mail or password"))
+		utils.WriteError(w, http.StatusServiceUnavailable, fmt.Errorf("Authentication service unavailable"))
 		return
 	}
-
-	if !auth.ComparePassword(u.Password, []byte(payload.Password)) {
-		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("Invalid e-mail or password"))
+	if !auth.ComparePassword(u.Password, []byte(password)) {
+		utils.WriteError(w, http.StatusUnauthorized, fmt.Errorf("Invalid credentials"))
 		return
 	}
-
-	token, err := auth.CreateJWT([]byte(db.Environement.JWTSecret), u.Id, *payload.RememberMe)
+	if !u.Verified {
+		utils.WriteError(w, http.StatusForbidden, fmt.Errorf("Verify your e-mail before signing in"))
+		return
+	}
+	sid, err := auth.RandomID()
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
+	refresh, err := auth.RandomToken()
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+	lifetime := 24 * time.Hour
+	if remember {
+		lifetime = 30 * 24 * time.Hour
+	}
+	if err := h.store.CreateSession(r.Context(), sid, u.Id, hashToken(refresh), time.Now().Add(lifetime)); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("Could not create session"))
+		return
+	}
+	access, err := auth.CreateAccessJWT([]byte(db.Environement.JWTSecret), u.Id, sid)
+	if err != nil {
+		_ = h.store.RevokeSession(context.Background(), sid)
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, map[string]any{"access_token": access, "refresh_token": refresh, "expires_in": 900})
+}
 
-	utils.WriteJSON(w, http.StatusOK, map[string]string{"access_token": token})
+func (h *Handler) handleLoginEmail(w http.ResponseWriter, r *http.Request) {
+	var p types.LoginUserEmail
+	if err := utils.ParseJSON(r, &p); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+	if err := utils.Validate.Struct(p); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("Invalid request"))
+		return
+	}
+	h.login(w, r, h.store.GetUserByEmail, strings.ToLower(strings.TrimSpace(p.Email)), p.Password, *p.RememberMe)
 }
 
 func (h *Handler) handleLoginUsername(w http.ResponseWriter, r *http.Request) {
-	var payload types.LoginUserUsername
-	if err := utils.ParseJSON(r, &payload); err != nil {
+	var p types.LoginUserUsername
+	if err := utils.ParseJSON(r, &p); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
-
-	if err := utils.Validate.Struct(payload); err != nil {
-		errors := err.(validator.ValidationErrors)
-		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("Invalid request %v", errors))
+	if err := utils.Validate.Struct(p); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("Invalid request"))
 		return
 	}
-
-	if !regexp.MustCompile(`^[a-zA-Z0-9_]+$`).MatchString(payload.Username) {
-		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("Username may only contain letters, numbers, and underscores"))
+	if !usernamePattern.MatchString(p.Username) {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("Invalid request"))
 		return
 	}
-
-	u, err := h.store.GetUserByUsername(payload.Username)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("Invalid username or password"))
-		return
-	}
-
-	if !auth.ComparePassword(u.Password, []byte(payload.Password)) {
-		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("Invalid username or password"))
-		return
-	}
-
-	token, err := auth.CreateJWT([]byte(db.Environement.JWTSecret), u.Id, *payload.RememberMe)
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, err)
-		return
-	}
-
-	utils.WriteJSON(w, http.StatusOK, map[string]string{"access_token": token})
+	h.login(w, r, h.store.GetUserByUsername, strings.ToLower(strings.TrimSpace(p.Username)), p.Password, *p.RememberMe)
 }

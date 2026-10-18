@@ -46,7 +46,7 @@ func testLoginUsernameInvalidRequest(t *testing.T, handler *Handler) {
 			Password:   "123123123123",
 			RememberMe: new(false),
 		}
-		packAndSendLoginUsernamePayload(payload, t, handler, http.StatusBadRequest)
+		packAndSendLoginUsernamePayload(payload, t, handler, http.StatusUnauthorized)
 	})
 }
 
