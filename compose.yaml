@@ -1,0 +1,12 @@
+services:
+  auth-api:
+    build:
+      context: .
+    env_file:
+      - docker.env
+    ports:
+      - "8080:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    init: true
+    restart: unless-stopped

@@ -1,0 +1,12 @@
+.git
+.gitignore
+.env
+.env.*
+docker.env
+docker.env.*
+bin
+build
+dist
+coverage.out
+coverage.html
+*.log
