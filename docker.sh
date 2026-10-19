@@ -1,3 +1,5 @@
+#!/bin/bash
+
 docker build -t auth-api .
 docker run -d --name auth-api \
   --add-host=host.docker.internal:host-gateway \
@@ -5,4 +7,3 @@ docker run -d --name auth-api \
   -p 8080:8080 \
   auth-api
 
-  
