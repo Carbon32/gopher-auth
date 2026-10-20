@@ -48,6 +48,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request, lookup func(stri
 	if remember {
 		lifetime = 30 * 24 * time.Hour
 	}
+	sessionExpiresAt := time.Now().Add(lifetime)
 	if err := h.store.CreateSession(r.Context(), sid, u.Id, hashToken(refresh), time.Now().Add(lifetime)); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("Could not create session"))
 		return
@@ -58,7 +59,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request, lookup func(stri
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
-	utils.WriteJSON(w, http.StatusOK, map[string]any{"access_token": access, "refresh_token": refresh, "expires_in": 900})
+	utils.WriteJSON(w, http.StatusOK, map[string]any{"access_token": access, "refresh_token": refresh, "expires_in": 900, "expires_at": sessionExpiresAt.UTC()})
 }
 
 func (h *Handler) handleLoginEmail(w http.ResponseWriter, r *http.Request) {
